@@ -22,10 +22,6 @@ def load_data():
     
     layers.dropna(inplace=True)
 
-    # TODO check if this is valid
-    layers = layers[layers['orgc_value_avg'] != 0]
-    layers = layers[layers['bottom'] != 0]
-
     print('Done reading data!')
 
     return attributes, profiles, layers
@@ -35,21 +31,28 @@ def visualize_layers():
     plt.scatter(layers.head(5000)['top'], layers.head(5000)['orgc_value_avg'])
     plt.show()
 
-def add_preprocessed_cols():
+def add_preprocessed_cols(layers, drop_zeros=True):
     layers['mid'] = layers[['top', 'bottom']].mean(axis=1)
-    # layers['log_mid'] = np.log10(layers['mid'])
+
+    if drop_zeros:
+        layers = layers[layers['mid'] > 0]
+        layers = layers[layers['orgc_value_avg'] != 0]
+
+    layers['log_mid'] = np.log10(layers['mid'])
     layers['log_bottom'] = np.log10(layers['bottom'])
     layers['log_orgc_value_avg'] = np.log10(layers['orgc_value_avg'])
+    return layers
 
-def fit_linregress():
-    # log-log
-    slope, intercept, r_value, p_value, std_err = stats.linregress(layers['log_bottom'], layers['log_orgc_value_avg'])
-    print(slope, intercept, r_value ** 2, std_err)
 
+def fit_linregress(layers):
     # log-log
-    slope, intercept, r_value, p_value, std_err = stats.linregress(layers['bottom'], layers['log_orgc_value_avg'])
-    print(slope, intercept, r_value ** 2, std_err)
+    slope, intercept, r_value, p_value, std_err = stats.linregress(layers['log_mid'], layers['log_orgc_value_avg'])
+    print('log C = {:.4f} log d + {:.4f}, R^2 = {:.4f}, stderr = {:.4f}'.format(slope, intercept, r_value ** 2, std_err))
+
+    # log-linear
+    slope, intercept, r_value, p_value, std_err = stats.linregress(layers['mid'], layers['log_orgc_value_avg'])
+    print('log C = {:.4f} d + {:.4f}, R^2 = {:.4f}, stderr = {:.4f}'.format(slope, intercept, r_value ** 2, std_err))
 
 attributes, profiles, layers = load_data()
-add_preprocessed_cols()
-fit_linregress()
+layers = add_preprocessed_cols(layers)
+fit_linregress(layers)
