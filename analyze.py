@@ -47,11 +47,11 @@ def add_preprocessed_cols(layers, drop_zeros=True):
 def fit_linregress(layers):
     # log-log
     slope, intercept, r_value, p_value, std_err = stats.linregress(layers['log_mid'], layers['log_orgc_value_avg'])
-    print('log C = {:.4f} log d + {:.4f}, R^2 = {:.4f}, stderr = {:.4f}'.format(slope, intercept, r_value ** 2, std_err))
+    print(f'log C = {slope:.4f} log d + {intercept:.4f}, R^2 = {r_value ** 2:.4f}, stderr = {std_err:.4f}')
 
     # log-linear
     slope, intercept, r_value, p_value, std_err = stats.linregress(layers['mid'], layers['log_orgc_value_avg'])
-    print('log C = {:.4f} d + {:.4f}, R^2 = {:.4f}, stderr = {:.4f}'.format(slope, intercept, r_value ** 2, std_err))
+    print(f'log C = {slope:.4f} d + {intercept:.4f}, R^2 = {r_value ** 2:.4f}, stderr = {std_err:.4f}')
 
 attributes, profiles, layers = load_data()
 layers = add_preprocessed_cols(layers)
