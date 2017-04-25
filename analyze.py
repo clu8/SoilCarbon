@@ -1,24 +1,18 @@
-import os
-
 import numpy as np
 import pandas as pd
 from scipy import stats
-# import matplotlib.pyplot as plt
 
-data_dir = os.path.join('..', 'WoSIS_2016_July')
-attributes_file = os.path.join(data_dir, 'wosis_201607_attributes.txt')
-layers_file = os.path.join(data_dir, 'wosis_201607_layers.txt')
-profiles_file = os.path.join(data_dir, 'wosis_201607_profiles.txt')
+import config
 
 
 def load_data():
     print('Reading data...')
 
-    attributes = pd.read_table(attributes_file)
-    profiles = pd.read_table(profiles_file, low_memory=False)
+    attributes = pd.read_table(config.attributes_file)
+    profiles = pd.read_table(config.profiles_file, low_memory=False)
 
     layers_cols = ['profile_id', 'profile_layer_id', 'top', 'bottom', 'orgc_value_avg']
-    layers = pd.read_table(layers_file, low_memory=False, usecols=layers_cols)
+    layers = pd.read_table(config.layers_file, low_memory=False, usecols=layers_cols)
     
     layers.dropna(inplace=True)
 
