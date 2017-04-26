@@ -5,11 +5,14 @@ from scipy import stats
 import config
 
 
-def load_data():
+def load_data(biome=True):
     print('Reading data...')
 
     attributes = pd.read_table(config.attributes_file)
-    profiles = pd.read_table(config.profiles_file, low_memory=False)
+    if biome:
+        profiles = pd.read_csv(config.profiles_biomes, low_memory=False)
+    else:
+        profiles = pd.read_table(config.profiles_file, low_memory=False)
 
     layers_cols = ['profile_id', 'profile_layer_id', 'top', 'bottom', 'orgc_value_avg']
     layers = pd.read_table(config.layers_file, low_memory=False, usecols=layers_cols)
@@ -65,11 +68,42 @@ def fit_linregress(layers):
     slope, intercept, r_value, p_value, std_err = stats.linregress(layers['mid'], layers['log_orgc_value_avg'])
     print(f'log C = {slope:.4f} d + {intercept:.4f}, R^2 = {r_value ** 2:.4f}, stderr = {std_err:.4f}')
 
+def fit_linregress_per_biome(layers):
+    for biome in range(1, 15):
+        layers_biome = layers[layers['biome'] == biome]
+        print(f'Biome: {biome}. Fitting models on {len(layers_biome)} data points.')
+        if len(layers_biome) > 0:
+            fit_linregress(layers_biome)
+        else:
+            print('No data!')
+
 attributes, profiles, layers = load_data()
 print(f'Total data points: {len(layers)}')
 print(f'Total profiles: {len(profiles)}')
 print(f'Data points with orgc_value_avg = 0: {sum(layers["orgc_value_avg"] == 0)}')
 layers = drop_bad_data(layers, profiles)
 layers = add_preprocessed_cols(layers)
+layers = pd.merge(layers, profiles, on='profile_id')
+
+print('\n=== ALL SOILS ===')
 print(f'Fitting models on {len(layers)} data points.')
 fit_linregress(layers)
+fit_linregress_per_biome(layers)
+
+print('\n=== HISTOSOLS ===')
+histosols = layers[layers['cstx_order_name'] == 'Histosol']
+print(f'Fitting models on {len(histosols)} data points.')
+fit_linregress(histosols)
+fit_linregress_per_biome(histosols)
+
+print('\n=== GELISOLS ===')
+gelisols = layers[layers['cstx_order_name'] == 'Gelisol']
+print(f'Fitting models on {len(gelisols)} data points.')
+fit_linregress(gelisols)
+fit_linregress_per_biome(gelisols)
+
+print('\n=== OTHER SOILS (incl. no data) ===')
+others = layers[(layers['cstx_order_name'] != 'Histosol') & (layers['cstx_order_name'] != 'Gelisol')]
+print(f'Fitting models on {len(others)} data points.')
+fit_linregress(others)
+fit_linregress_per_biome(others)
