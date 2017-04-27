@@ -77,6 +77,31 @@ def fit_linregress_per_biome(layers):
         else:
             print('No data!')
 
+def fit_models():
+    print('\n=== ALL SOILS ===')
+    print(f'Fitting models on {len(layers)} data points.')
+    fit_linregress(layers)
+    fit_linregress_per_biome(layers)
+
+    print('\n=== HISTOSOLS ===')
+    histosols = layers[layers['cstx_order_name'] == 'Histosol']
+    print(f'Fitting models on {len(histosols)} data points.')
+    fit_linregress(histosols)
+    fit_linregress_per_biome(histosols)
+
+    print('\n=== GELISOLS ===')
+    gelisols = layers[layers['cstx_order_name'] == 'Gelisol']
+    print(f'Fitting models on {len(gelisols)} data points.')
+    fit_linregress(gelisols)
+    fit_linregress_per_biome(gelisols)
+
+    print('\n=== OTHER SOILS (incl. no data) ===')
+    others = layers[(layers['cstx_order_name'] != 'Histosol') & (layers['cstx_order_name'] != 'Gelisol')]
+    print(f'Fitting models on {len(others)} data points.')
+    fit_linregress(others)
+    fit_linregress_per_biome(others)
+
+
 attributes, profiles, layers = load_data()
 print(f'Total data points: {len(layers)}')
 print(f'Total profiles: {len(profiles)}')
@@ -85,25 +110,5 @@ layers = drop_bad_data(layers, profiles)
 layers = add_preprocessed_cols(layers)
 layers = pd.merge(layers, profiles, on='profile_id')
 
-print('\n=== ALL SOILS ===')
-print(f'Fitting models on {len(layers)} data points.')
-fit_linregress(layers)
-fit_linregress_per_biome(layers)
-
-print('\n=== HISTOSOLS ===')
-histosols = layers[layers['cstx_order_name'] == 'Histosol']
-print(f'Fitting models on {len(histosols)} data points.')
-fit_linregress(histosols)
-fit_linregress_per_biome(histosols)
-
-print('\n=== GELISOLS ===')
-gelisols = layers[layers['cstx_order_name'] == 'Gelisol']
-print(f'Fitting models on {len(gelisols)} data points.')
-fit_linregress(gelisols)
-fit_linregress_per_biome(gelisols)
-
-print('\n=== OTHER SOILS (incl. no data) ===')
-others = layers[(layers['cstx_order_name'] != 'Histosol') & (layers['cstx_order_name'] != 'Gelisol')]
-print(f'Fitting models on {len(others)} data points.')
-fit_linregress(others)
-fit_linregress_per_biome(others)
+if __name__ == '__main__':
+    fit_models()
