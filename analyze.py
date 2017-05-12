@@ -59,6 +59,23 @@ def add_preprocessed_cols(layers, drop_zeros=True):
     layers.loc[:, 'log_orgc_value_avg'] = np.log10(layers.loc[:, 'orgc_value_avg'])
     return layers
 
+def get_profiles_per_soil_type(profiles):
+    '''
+    Peatland soil:
+    Histosol in cfao_major_group OR Histosol in cwrb_reference_soil_group OR Histosol in cstx_order_name
+    Permafrost soil:
+    Gelic in cfao_soil_unit OR Cryosol in cwrb_reference_group OR Gelisol in cstx_order_name.
+    '''
+    peatland_mask = (profiles['cfao_major_group'] == 'Histosols') \
+        | (profiles['cwrb_reference_soil_group'] == 'Histosols') \
+                    | (profiles['cstx_order_name'] == 'Histosol')
+    print(f'Found {sum(peatland_mask)} peatland profiles with CFAO/CWRB/CSTX labels.')
+
+    permafrost_mask = (profiles['cfao_soil_unit'] == 'Gelic') \
+        | (profiles['cwrb_reference_soil_group'] == 'Cryosols') \
+        | (profiles['cstx_order_name'] == 'Gelisol')
+    print(f'Found {sum(permafrost_mask)} permafrost profiles with CFAO/CWRB/CSTX labels.')
+
 def fit_linregress(layers):
     # log-log
     slope, intercept, r_value, p_value, std_err = stats.linregress(layers['log_mid'], layers['log_orgc_value_avg'])
