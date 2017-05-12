@@ -59,7 +59,7 @@ def add_preprocessed_cols(layers, drop_zeros=True):
     layers.loc[:, 'log_orgc_value_avg'] = np.log10(layers.loc[:, 'orgc_value_avg'])
     return layers
 
-def get_profiles_per_soil_type(profiles):
+def get_soil_type_masks(profiles):
     '''
     Peatland soil:
     Histosol in cfao_major_group OR Histosol in cwrb_reference_soil_group OR Histosol in cstx_order_name
@@ -76,47 +76,42 @@ def get_profiles_per_soil_type(profiles):
         | (profiles['cstx_order_name'] == 'Gelisol')
     print(f'Found {sum(permafrost_mask)} permafrost profiles with CFAO/CWRB/CSTX labels.')
 
+    other_soils_mask = ~peatland_mask & ~permafrost_mask
+
+    return peatland_mask, permafrost_mask, other_soils_mask
+
 def fit_linregress(layers):
     # log-log
     slope, intercept, r_value, p_value, std_err = stats.linregress(layers['log_mid'], layers['log_orgc_value_avg'])
-    print(f'log C = {slope:.4f} log d + {intercept:.4f}, R^2 = {r_value ** 2:.4f}, stderr = {std_err:.4f}')
+    print(f'log C = {slope:.3f} log d + {intercept:.3f}, R^2 = {r_value ** 2:.3f}, stderr = {std_err:.3f}')
 
     # log-linear
     slope, intercept, r_value, p_value, std_err = stats.linregress(layers['mid'], layers['log_orgc_value_avg'])
-    print(f'log C = {slope:.4f} d + {intercept:.4f}, R^2 = {r_value ** 2:.4f}, stderr = {std_err:.4f}')
+    print(f'log C = {slope:.3f} d + {intercept:.3f}, R^2 = {r_value ** 2:.3f}, stderr = {std_err:.3f}')
 
 def fit_linregress_per_biome(layers):
-    for biome in range(1, 15):
-        layers_biome = layers[layers['biome'] == biome]
-        print(f'Biome: {biome}. Fitting models on {len(layers_biome)} data points.')
+    for biome_id in range(1, 15):
+        biome_name = config.biomes_dict[biome_id]
+        layers_biome = layers[layers['biome'] == biome_id]
+        print(f'Biome: {biome_name}. Fitting models on {len(layers_biome)} data points.')
         if len(layers_biome) > 0:
             fit_linregress(layers_biome)
         else:
             print('No data!')
 
-def fit_models():
-    print('\n=== ALL SOILS ===')
-    print(f'Fitting models on {len(layers)} data points.')
-    fit_linregress(layers)
-    fit_linregress_per_biome(layers)
+def fit_models(layers, profiles):
+    peatland_mask, permafrost_mask, other_soils_mask = get_soil_type_masks(profiles)
 
-    print('\n=== HISTOSOLS ===')
-    histosols = layers[layers['cstx_order_name'] == 'Histosol']
-    print(f'Fitting models on {len(histosols)} data points.')
-    fit_linregress(histosols)
-    fit_linregress_per_biome(histosols)
-
-    print('\n=== GELISOLS ===')
-    gelisols = layers[layers['cstx_order_name'] == 'Gelisol']
-    print(f'Fitting models on {len(gelisols)} data points.')
-    fit_linregress(gelisols)
-    fit_linregress_per_biome(gelisols)
-
-    print('\n=== OTHER SOILS (incl. no data) ===')
-    others = layers[(layers['cstx_order_name'] != 'Histosol') & (layers['cstx_order_name'] != 'Gelisol')]
-    print(f'Fitting models on {len(others)} data points.')
-    fit_linregress(others)
-    fit_linregress_per_biome(others)
+    for mask, soil_type in ((slice(None), 'All soils'),
+                            (peatland_mask, 'Peatlands'),
+                            (permafrost_mask, 'Permafrost'),
+                            (other_soils_mask, 'Other soils')):
+        profiles_subset = profiles[mask][['profile_id']]
+        layers_subset = pd.merge(layers, profiles_subset, on='profile_id')
+        print(f'\n====== SOIL TYPE: {soil_type} ======')
+        print(f'Fitting models on {len(layers_subset)} layers.')
+        fit_linregress(layers_subset)
+        fit_linregress_per_biome(layers_subset)
 
 
 attributes, profiles, layers = load_data()
@@ -128,4 +123,4 @@ layers = add_preprocessed_cols(layers)
 layers = pd.merge(layers, profiles, on='profile_id')
 
 if __name__ == '__main__':
-    fit_models()
+    fit_models(layers, profiles)
