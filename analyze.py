@@ -5,21 +5,10 @@ from scipy import stats
 import config
 
 
-def load_data(biome=True):
-    print('Reading data...')
-
+def load_data():
     attributes = pd.read_table(config.attributes_file)
-    if biome:
-        profiles = pd.read_csv(config.profiles_biomes, low_memory=False)
-    else:
-        profiles = pd.read_table(config.profiles_file, low_memory=False)
-
-    layers_cols = ['profile_id', 'profile_layer_id', 'top', 'bottom', 'orgc_value_avg']
-    layers = pd.read_table(config.layers_file, low_memory=False, usecols=layers_cols)
-    
-    layers.dropna(inplace=True)
-
-    print('Done reading data!')
+    profiles = pd.read_csv(config.profiles_biomes, low_memory=False)
+    layers = pd.read_table(config.layers_file, low_memory=False, usecols=config.layers_cols)
 
     return attributes, profiles, layers
 
@@ -28,30 +17,42 @@ def visualize_layers(layers):
     plt.scatter(layers.head(5000)['top'], layers.head(5000)['orgc_value_avg'])
     plt.show()
 
-def drop_same_profile_layers(layers, profiles, bad_layers, verbose=True):
+def drop_same_profile_layers(layers, profiles, bad_layers):
     '''
     Given bad_layers, drops all layers in the same profiles from layers and returns the result. 
     '''
     bad_profiles = pd.merge(profiles, bad_layers, on='profile_id')
-    bad_profile_layers = pd.merge(layers, bad_profiles, on='profile_id')
-    if verbose:
-        print(f'Dropped layers: {len(bad_profile_layers)}')
-    return layers[~layers['profile_id'].isin(bad_profiles['profile_id'])]
+    bad_layers_mask = layers['profile_id'].isin(bad_profiles['profile_id'])
+    print(f'Dropped layers: {sum(bad_layers_mask)}')
+    return layers[~bad_layers_mask]
 
 
 def drop_bad_data(layers, profiles):
-    print('Dropping layers with top < 0, and layers in same profiles.')
-    layers = drop_same_profile_layers(layers, profiles, layers[layers['top'] < 0])
+    bad_layer_mask = layers['top'].isnull() | layers['bottom'].isnull() | layers['orgc_value_avg'].isnull()
+    print(f'Dropping {sum(bad_layer_mask)} layers with null top, bottom, or orgc_value_avg. ')
+    layers = layers[~bad_layer_mask]
 
-    print('Dropping layers with orgc_value_avg = 0, and layers in same profiles.')
-    layers = drop_same_profile_layers(layers, profiles, layers[layers['orgc_value_avg'] == 0])
+    print('Finding layers with bad data and dropping those layers and all other layers in the same profile. ')
 
-    print('Dropping layers with top = 0 & bottom = 0, and layers in same profiles.')
-    layers = drop_same_profile_layers(layers, profiles, layers[(layers['top'] == 0) & (layers['bottom'] == 0)])
+    bad_layer_mask = layers['top'] < 0
+    print(f'Layers with top < 0, and layers in same profiles: {sum(bad_layer_mask)}')
+    layers = drop_same_profile_layers(layers, profiles, layers[bad_layer_mask])
+
+    bad_layer_mask = layers['orgc_value_avg'] == 0
+    print(f'Layers with orgc_value_avg = 0: {sum(bad_layer_mask)}')
+    layers = drop_same_profile_layers(layers, profiles, layers[bad_layer_mask])
+
+    bad_layer_mask = (layers['top'] == 0) & (layers['bottom'] == 0)
+    print(f'Layers with top = 0 & bottom = 0: {sum(bad_layer_mask)}')
+    layers = drop_same_profile_layers(layers, profiles, layers[bad_layer_mask])
+
+    print('Layers in profiles <40 cm with all orgc > 17%.')
+    print(f'Dropped layers: {sum(layers["my_soil_type"] == "BadData")}')
+    layers = layers[layers['my_soil_type'] != 'BadData']
 
     return layers
 
-def add_preprocessed_cols(layers, drop_zeros=True):
+def add_cols(layers, drop_zeros=True):
     layers.loc[:, 'mid'] = layers[['top', 'bottom']].mean(axis=1)
 
     layers.loc[:, 'log_mid'] = np.log10(layers.loc[:, 'mid'])
@@ -70,6 +71,19 @@ def get_soil_type_masks(profiles):
         | (profiles['cwrb_reference_soil_group'] == 'Histosols') \
                     | (profiles['cstx_order_name'] == 'Histosol')
     print(f'Found {sum(peatland_mask)} peatland profiles with CFAO/CWRB/CSTX labels.')
+
+    peatland_option_1_mask = profiles['my_soil_type'] == 'PeatlandOption1'
+    print(f'Found {sum(peatland_option_1_mask)} peatland profiles with option 1.')
+    print(f'{sum(peatland_option_1_mask & peatland_mask)} overlap with CFAO/CWRB/CSTX labels.')
+
+    peatland_option_2_mask = profiles['my_soil_type'] == 'PeatlandOption2'
+    print(f'Found {sum(peatland_option_2_mask)} peatland profiles with option 2.')
+    print(f'{sum(peatland_option_2_mask & peatland_mask)} overlap with CFAO/CWRB/CSTX labels.')
+
+    peatland_mask |= peatland_option_1_mask
+    peatland_mask |= peatland_option_2_mask
+
+    print(f'Total peatland profiles: {sum(peatland_mask)}')
 
     permafrost_mask = (profiles['cfao_soil_unit'] == 'Gelic') \
         | (profiles['cwrb_reference_soil_group'] == 'Cryosols') \
@@ -93,7 +107,7 @@ def fit_linregress_per_biome(layers):
     for biome_id in range(1, 15):
         biome_name = config.biomes_dict[biome_id]
         layers_biome = layers[layers['biome'] == biome_id]
-        print(f'Biome: {biome_name}. Fitting models on {len(layers_biome)} data points.')
+        print(f'Biome: {biome_name}. Fitting models on {len(layers_biome)} layers.')
         if len(layers_biome) > 0:
             fit_linregress(layers_biome)
         else:
@@ -106,21 +120,24 @@ def fit_models(layers, profiles):
                             (peatland_mask, 'Peatlands'),
                             (permafrost_mask, 'Permafrost'),
                             (other_soils_mask, 'Other soils')):
-        profiles_subset = profiles[mask][['profile_id']]
-        layers_subset = pd.merge(layers, profiles_subset, on='profile_id')
+        layers_mask = layers['profile_id'].isin(profiles[mask]['profile_id'])
+        layers_subset = layers[layers_mask]
         print(f'\n====== SOIL TYPE: {soil_type} ======')
         print(f'Fitting models on {len(layers_subset)} layers.')
         fit_linregress(layers_subset)
         fit_linregress_per_biome(layers_subset)
 
+def preprocess(layers, profiles):
+    layers = pd.merge(layers, profiles, on='profile_id')
+    layers = drop_bad_data(layers, profiles)
+    layers = add_cols(layers)
+    return layers
+
 
 attributes, profiles, layers = load_data()
-print(f'Total data points: {len(layers)}')
+print(f'Total layers: {len(layers)}')
 print(f'Total profiles: {len(profiles)}')
-print(f'Data points with orgc_value_avg = 0: {sum(layers["orgc_value_avg"] == 0)}')
-layers = drop_bad_data(layers, profiles)
-layers = add_preprocessed_cols(layers)
-layers = pd.merge(layers, profiles, on='profile_id')
 
 if __name__ == '__main__':
+    layers = preprocess(layers, profiles)
     fit_models(layers, profiles)
