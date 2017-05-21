@@ -3,14 +3,8 @@ import pandas as pd
 from scipy import stats
 
 import config
+import data
 
-
-def load_data():
-    attributes = pd.read_table(config.attributes_file)
-    profiles = pd.read_csv(config.profiles_biomes, low_memory=False)
-    layers = pd.read_table(config.layers_file, low_memory=False, usecols=config.layers_cols)
-
-    return attributes, profiles, layers
 
 def visualize_layers(layers):
     plt.figure()
@@ -47,8 +41,8 @@ def drop_bad_data(layers, profiles):
     layers = drop_same_profile_layers(layers, profiles, layers[bad_layer_mask])
 
     print('Layers in profiles <40 cm with all orgc > 17%.')
-    print(f'Dropped layers: {sum(layers["my_soil_type"] == "BadData")}')
-    layers = layers[layers['my_soil_type'] != 'BadData']
+    print(f'Dropped layers: {sum(layers["peatland_manual"] == "BadData")}')
+    layers = layers[layers['peatland_manual'] != 'BadData']
 
     return layers
 
@@ -59,40 +53,6 @@ def add_cols(layers, drop_zeros=True):
     # layers.loc[:, 'log_bottom'] = np.log10(layers['bottom'])
     layers.loc[:, 'log_orgc_value_avg'] = np.log10(layers.loc[:, 'orgc_value_avg'])
     return layers
-
-def get_soil_type_masks(profiles):
-    '''
-    Peatland soil:
-    Histosol in cfao_major_group OR Histosol in cwrb_reference_soil_group OR Histosol in cstx_order_name
-    Permafrost soil:
-    Gelic in cfao_soil_unit OR Cryosol in cwrb_reference_group OR Gelisol in cstx_order_name.
-    '''
-    peatland_mask = (profiles['cfao_major_group'] == 'Histosols') \
-        | (profiles['cwrb_reference_soil_group'] == 'Histosols') \
-                    | (profiles['cstx_order_name'] == 'Histosol')
-    print(f'Found {sum(peatland_mask)} peatland profiles with CFAO/CWRB/CSTX labels.')
-
-    peatland_option_1_mask = profiles['my_soil_type'] == 'PeatlandOption1'
-    print(f'Found {sum(peatland_option_1_mask)} peatland profiles with option 1.')
-    print(f'{sum(peatland_option_1_mask & peatland_mask)} overlap with CFAO/CWRB/CSTX labels.')
-
-    peatland_option_2_mask = profiles['my_soil_type'] == 'PeatlandOption2'
-    print(f'Found {sum(peatland_option_2_mask)} peatland profiles with option 2.')
-    print(f'{sum(peatland_option_2_mask & peatland_mask)} overlap with CFAO/CWRB/CSTX labels.')
-
-    peatland_mask |= peatland_option_1_mask
-    peatland_mask |= peatland_option_2_mask
-
-    print(f'Total peatland profiles: {sum(peatland_mask)}')
-
-    permafrost_mask = (profiles['cfao_soil_unit'] == 'Gelic') \
-        | (profiles['cwrb_reference_soil_group'] == 'Cryosols') \
-        | (profiles['cstx_order_name'] == 'Gelisol')
-    print(f'Found {sum(permafrost_mask)} permafrost profiles with CFAO/CWRB/CSTX labels.')
-
-    other_soils_mask = ~peatland_mask & ~permafrost_mask
-
-    return peatland_mask, permafrost_mask, other_soils_mask
 
 def fit_linregress(layers):
     # log-log
@@ -114,7 +74,9 @@ def fit_linregress_per_biome(layers):
             print('No data!')
 
 def fit_models(layers, profiles):
-    peatland_mask, permafrost_mask, other_soils_mask = get_soil_type_masks(profiles)
+    peatland_mask = profiles['soil_type_all'] == 'peatland'
+    permafrost_mask = profiles['soil_type_all'] == 'permafrost'
+    other_soils_mask = ~peatland_mask & ~permafrost_mask
 
     for mask, soil_type in ((slice(None), 'All soils'),
                             (peatland_mask, 'Peatlands'),
@@ -134,7 +96,7 @@ def preprocess(layers, profiles):
     return layers
 
 
-attributes, profiles, layers = load_data()
+attributes, profiles, layers = data.load_data()
 print(f'Total layers: {len(layers)}')
 print(f'Total profiles: {len(profiles)}')
 

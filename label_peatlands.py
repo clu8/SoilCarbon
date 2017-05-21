@@ -1,6 +1,13 @@
+'''
+Script for tagging profiles as peatlands with our own rules. 
+
+Run this after label_biomes.py.
+'''
+
 import pandas as pd
 
 import config
+import data
 
 
 ORGC_THRESHOLD = 170
@@ -39,12 +46,11 @@ def label_soil_type(profile, layers):
 
 
 def main():
-    profiles = pd.read_csv(config.profiles_biomes, low_memory=False)
-    layers = pd.read_table(config.layers_file, low_memory=False, usecols=config.layers_cols)
+    _, profiles, layers = data.load_data(exclude_profiles_cols=False)
 
-    profiles['my_soil_type'] = profiles.apply(lambda profile: label_soil_type(profile, layers), axis=1)
+    profiles['peatland_manual'] = profiles.apply(lambda profile: label_soil_type(profile, layers), axis=1)
 
-    profiles.to_csv(config.profiles_biomes)
+    profiles.to_csv(config.profiles_file_labeled)
 
 if __name__ == '__main__':
     main()

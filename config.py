@@ -4,9 +4,15 @@ data_dir = os.path.join('..', 'WoSIS_2016_July')
 attributes_file = os.path.join(data_dir, 'wosis_201607_attributes.txt')
 layers_file = os.path.join(data_dir, 'wosis_201607_layers.txt')
 profiles_file = os.path.join(data_dir, 'wosis_201607_profiles.txt')
-profiles_biomes = os.path.join(data_dir, 'wosis_201607_profiles_biomes.csv')
+profiles_file_labeled = os.path.join(data_dir, 'wosis_201607_profiles_labeled.csv')
+
 
 layers_cols = ['profile_id', 'profile_layer_id', 'top', 'bottom', 'orgc_value_avg']
+profiles_cols = [
+    'profile_id', 'country_id', 'country_name', 'latitude', 'longitude',
+    'cfao_major_group', 'cfao_soil_unit', 'cwrb_reference_soil_group', 'cstx_order_name',
+    'biome', 'peatland_manual', 'soil_type_all'
+]
 
 shapefile_path = '../official_teow/wwf_terr_ecos'
 
