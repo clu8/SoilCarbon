@@ -4,9 +4,6 @@ SCript for labeling raw profiles data with flags for our peatlands/permafrost la
 Run after running label_biomes.py and label_peatlands.py. 
 '''
 
-import os
-
-import analyze
 import config
 import data
 
@@ -33,7 +30,7 @@ def get_soil_type_masks(profiles):
 
     peatland_mask |= peatland_option_1_mask
     peatland_mask |= peatland_option_2_mask
-
+    peatland_mask &= ~(profiles['peatland_manual'] == 'BadData')
     print(f'Total peatland profiles: {sum(peatland_mask)}')
 
     permafrost_mask = (profiles['cfao_soil_unit'] == 'Gelic') \
@@ -41,12 +38,13 @@ def get_soil_type_masks(profiles):
         | (profiles['cstx_order_name'] == 'Gelisol')
     print(f'Found {sum(permafrost_mask)} permafrost profiles with CFAO/CWRB/CSTX labels.')
 
-    other_soils_mask = ~peatland_mask & ~permafrost_mask
+    permafrost_mask &= ~(profiles['peatland_manual'] == 'BadData')
+    print(f'Total permafrost profiles: {sum(permafrost_mask)}')
 
-    return peatland_mask, permafrost_mask, other_soils_mask
+    return peatland_mask, permafrost_mask
 
 _, profiles, _ = data.load_data(exclude_profiles_cols=False)
-peatland_mask, permafrost_mask, other_soils_mask = get_soil_type_masks(profiles)
+peatland_mask, permafrost_mask = get_soil_type_masks(profiles)
 
 profiles.loc[peatland_mask, 'soil_type_all'] = 'peatland'
 profiles.loc[permafrost_mask, 'soil_type_all'] = 'permafrost'
