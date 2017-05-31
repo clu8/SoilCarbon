@@ -3,6 +3,7 @@ import os
 data_dir = os.path.join('..', 'WoSIS_2016_July')
 attributes_file = os.path.join(data_dir, 'wosis_201607_attributes.txt')
 layers_file = os.path.join(data_dir, 'wosis_201607_layers.txt')
+layers_file_cumulative = os.path.join(data_dir, 'wosis_201607_layers_cumulative.csv')
 profiles_file = os.path.join(data_dir, 'wosis_201607_profiles.txt')
 profiles_file_labeled = os.path.join(data_dir, 'wosis_201607_profiles_labeled.csv')
 
