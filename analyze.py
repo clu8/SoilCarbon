@@ -6,11 +6,6 @@ import config
 import data
 
 
-def visualize_layers(layers):
-    plt.figure()
-    plt.scatter(layers.head(5000)['top'], layers.head(5000)['orgc_value_avg'])
-    plt.show()
-
 def drop_same_profile_layers(layers, bad_layers):
     '''
     Given bad_layers, drops all layers in the same profiles from layers and returns the result. 

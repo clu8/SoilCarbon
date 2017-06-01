@@ -17,6 +17,8 @@ profiles_cols = [
 
 shapefile_path = '../official_teow/wwf_terr_ecos'
 
+visualizations_dir = 'visualizations'
+
 
 biomes_dict = {
     1: 'Tropical and Subtropical Moist Broadleaf Forests',
