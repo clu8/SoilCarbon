@@ -8,7 +8,11 @@ profiles_file = os.path.join(data_dir, 'wosis_201607_profiles.txt')
 profiles_file_labeled = os.path.join(data_dir, 'wosis_201607_profiles_labeled.csv')
 
 
-layers_cols = ['profile_id', 'profile_layer_id', 'top', 'bottom', 'orgc_value_avg']
+layers_cols = [
+    'profile_id', 'profile_layer_id', 'top', 'bottom', 'orgc_value_avg',
+    'bdfi_value_avg', 'bdws_value_avg', 'cfgr_value_avg', 'cfvo_value_avg'
+]
+
 profiles_cols = [
     'profile_id', 'country_id', 'country_name', 'latitude', 'longitude',
     'cfao_major_group', 'cfao_soil_unit', 'cwrb_reference_soil_group', 'cstx_order_name',
