@@ -16,7 +16,7 @@ def density_not_null(profile_layers):
         )
 
 def validate_profile(profile_layers):
-    return is_contiguous(profile_layers)
+    return is_contiguous(profile_layers) and orgc_not_null(profile_layers) and density_not_null(profile_layers)
 
 _, profiles, layers = data.load_data(exclude_profiles_cols=True, exclude_layers_cols=True)
 
