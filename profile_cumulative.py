@@ -2,7 +2,6 @@ import data
 
 
 def is_contiguous(profile_layers):
-    bottom = None
     return all(profile_layers['top'][1:].as_matrix() == profile_layers['bottom'][:-1].as_matrix())
 
 def orgc_not_null(profile_layers):
@@ -15,9 +14,6 @@ def density_not_null(profile_layers):
             and all(profile_layers['cfgr_value_avg'].notnull())
             and all(profile_layers['cfvo_value_avg'].notnull())
         )
-
-def validate_profile(profile_layers):
-    return is_contiguous(profile_layers) and orgc_not_null(profile_layers) and density_not_null(profile_layers)
 
 
 if __name__ == '__main__':
@@ -40,5 +36,5 @@ if __name__ == '__main__':
     print(f'# contiguous: {num_contiguous}')
     print(f'# complete orgc: {num_orgc}')
     print(f'# complete density: {num_density}')
-    print(f'# all: {num_all}')
-    print(f'# profiles: {len(profiles)}')
+    print(f'# all 3 above criteria: {num_all}')
+    print(f'# total: {len(profiles)}')

@@ -3,7 +3,7 @@ import numpy as np
 from scipy import stats
 
 from analyze_utils import preprocess
-from profile_cumulative import validate_profile
+from profile_cumulative import is_contiguous, orgc_not_null, density_not_null
 import config
 import data
 
@@ -66,6 +66,21 @@ def fit_models(layers):
         fit_linregress(layers_subset)
         fit_linregress_per_biome(layers_subset)
 
+def get_top_contiguous(profile_layers):
+    '''
+    To calculate the cumulative area density (kg/m^2) for each depth, we need contiguous layers. 
+    In many profiles the data is not contiguous. However, we can still try to use the top part of the
+    profile which is still contiguous. 
+    '''
+    prev_bottom = 0
+
+    for i in range(len(profile_layers)):
+        if profile_layers.iloc[i]['top'] != prev_bottom:
+            break
+        prev_bottom = profile_layers.iloc[i]['bottom']
+
+    return profile_layers.iloc[:i]
+
 def prepare_data():
     _, profiles, layers = data.load_data()
 
@@ -77,9 +92,20 @@ def prepare_data():
     for profile_id in profiles['profile_id']:
         profile_layers = layers[layers['profile_id'] == profile_id].sort_values('top')
 
-        if validate_profile(profile_layers):
-            profile_layers['orgc_cumulative'] = profile_layers['orgc_area_density'].cumsum()
-            layers_by_profile.append(profile_layers)
+        # trim to contiguous part only
+        if not is_contiguous(profile_layers):
+            profile_layers = get_top_contiguous(profile_layers)
+
+        # skip this profile if it doesn't have complete orgc or density data
+        if not orgc_not_null(profile_layers) or not density_not_null(profile_layers):
+            continue
+
+        # skip this profile if the profile (full or partial) has 3 or fewer layers
+        if len(profile_layers) <= 3:
+            continue
+
+        profile_layers['orgc_cumulative'] = profile_layers['orgc_area_density'].cumsum()
+        layers_by_profile.append(profile_layers)
 
     layers_cum = pd.concat(layers_by_profile)
     layers_cum['log_orgc_cumulative'] = np.log10(layers_cum['orgc_cumulative'])
